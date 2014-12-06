@@ -9,6 +9,7 @@
 //              5. A SLIDER is provided for user to dynamically FILTER data
 //              6. Highlight with color change and tooltip around mouse position enabled
 
+
 import java.util.Collections;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,6 +33,9 @@ HScrollbar slider;     // slider
 HScrollbar slider2;    // slider
 Float sliderWidth;     // slider's width
 int[] button = {WIDTH - 150, 20, WIDTH - 20, 50};  // x1, y1, weight, height of the file chosser button
+int[] sortRect = {WIDTH - PADDING, PADDING, WIDTH - PADDING + 60, PADDING + 20}; // sort button area
+boolean sortedData = false; // whether to sort the data in bar graph
+int randomColor = 0;    // random color index for bar
 
 // for bar chart
 int TICKWIDTH = 10;    // the length of the ticks on y-axis
@@ -85,6 +89,7 @@ void fileSelected(File selection) {
     // read in the chosen file
     println("User selected " + selection.getAbsolutePath());
     filepath = selection.getAbsolutePath();  
+    colorSet.clear();
     readCSVFile(filepath);
   }
 }
@@ -93,7 +98,7 @@ void fileSelected(File selection) {
 /**
  * The fucntion to load a csv file
  */
-void readCSVFile(String filename) {
+void readCSVFile(String filename) {  
   // Get the header line
   BufferedReader reader = createReader(filename);
   try {
@@ -127,6 +132,8 @@ void readCSVFile(String filename) {
     colorSetter();  // set the color using the last column in csv file
                     // colorSetter must be used after readCSVFile()
   }
+  
+  randomColor = (int)(Math.random()*10);  // pick a random color
 }
 
 
@@ -136,6 +143,11 @@ void readCSVFile(String filename) {
 void mouseClicked() {
   if (mouseInRect(button)) {
       selectInput("Select a file to process:", "fileSelected");
+  }
+  
+  if (mouseInRect(sortRect)) {
+    sortedData = !sortedData;
+    println(sortedData);
   }
 }
 
@@ -150,12 +162,11 @@ void draw() {
   
   // draw the file chooser button
   drawFileChooser();
-  
+
   // 1 column, draw a bar graph
   if (fields.length == 1 && values != null) {
     slider.update();
     slider.display();
-    
     drawBar();
     
   // 2 columns, draw a scatter plot
@@ -208,9 +219,9 @@ void drawAxes(int graphID) {
   // draw the title of the bar graph
   textSize(20);
   if (graphID == 1) { // graphID mean the number of columns in CSV file
-    text("Bar Graph of " + fields[0], width / 2 - 100, PADDING / 2);    
+    text("Bar Graph of " + fields[0], width / 2 - 150, PADDING / 2);    
   } else if (graphID == 2) {
-    text("Scatterplot of " + fields[0] + ", " + fields[1], width / 2 - 100, PADDING / 2);
+    text("Scatterplot of " + fields[0] + ", " + fields[1], width / 2 - 150, PADDING / 2);
   }
   textSize(12);
   
@@ -232,6 +243,8 @@ void drawAxes(int graphID) {
       for (int j = 0; j < 5; j++) {
         line(x1 + (j + 1) * tickGap, y1, x1 + (j + 1) * tickGap, y1 + TICKWIDTH);
       }
+      // draw x-axis label
+      text(fields[0], x2, y2 - 10);
   }
   
   // draw the y-axis
@@ -249,6 +262,13 @@ void drawAxes(int graphID) {
     } else if (graphID == 2) {
       line(x1, y2 + j * tickGap, x1 - TICKWIDTH, y2 + j * tickGap);
     }
+  }
+  
+  // draw y-axis label
+  if (graphID == 1) {
+    text(fields[0], x1, y2 - 15);
+  } else {
+    text(fields[1], x1, y2 - 15);
   }
 }
 
@@ -278,6 +298,20 @@ void drawBar() {
   // draw the x/y coordinates
   drawAxes(1);
     
+  // draw the sort rect
+  fill(255);
+  stroke(100);
+  rect(width - PADDING, PADDING, 60, 20);
+  fill(105);
+  text("sort", width - PADDING + 10, PADDING + 15);
+  if (mouseInRect(sortRect)) {
+    fill(200);
+    stroke(100);
+    rect(width - PADDING, PADDING, 60, 20);
+    fill(80);
+    text("sort", width - PADDING + 10, PADDING + 15);
+  }
+  
   // get the selected bars (values no larger than the slected value through silder)
   try {
     // selet filterd bars
@@ -301,6 +335,10 @@ void drawBar() {
   if (bars == null || N == 0) {
     return;
   }
+  
+  if (sortedData) {
+     Collections.sort(bars);
+  }
   int maxBarHeight = HEIGHT - 2 * PADDING;    // top/bottem 1 padding;
   int barWidth = (width - 4 * PADDING) / N;   // right/left 2 paddings;
   for (int i = 0; i < N; i++) {
@@ -311,26 +349,33 @@ void drawBar() {
 
     // draw the bars
     noStroke();
-    fill(#FF3B7B);
+    colorPicker(randomColor);
     rect(barX, barY, barWidth * 0.7, barHeight);
-    
-    // mouse over effects with color change and tooltip
+  }
+  
+  
+  // mouse over effects with color change and tooltip
+  for (int i = 0; i < N; i++) {
+    // compute bar property
+    int barHeight = int(bars.get(i) / maxVal * maxBarHeight);
+    int barX = 2 * PADDING + (barWidth * i);
+    int barY = HEIGHT - barHeight - PADDING;
     if (barX < mouseX && mouseX < barX + barWidth * 0.7 
         && barY < mouseY && mouseY < HEIGHT - PADDING) {
-           fill(#B5E8CC);
-           noStroke();
-           rect(barX, barY, barWidth * 0.7, barHeight);
-           fill(#495151);
-           text(String.format("%d", int(bars.get(i))), mouseX - barWidth * 0.3, mouseY - 10);
+       fill(#B5E8CC);
+       noStroke();
+       rect(barX, barY, barWidth * 0.7, barHeight);
+       fill(#495151);
+       text(String.format("%d", int(bars.get(i))), mouseX - barWidth * 0.3, mouseY - 10);
     }
-    
-    // draw the number on y-axis
-    stroke(#888888);
-    strokeWeight(1);
-    fill(#888888);
-    for (int j = 0; j < 5; j++) {
-      text(String.format("%.1f", maxVal * (5 - j) / 5), PADDING + 10, PADDING + (HEIGHT - 2 * PADDING) * j / 5);
-    }
+  }
+  
+  // draw the number on y-axis
+  stroke(#888888);
+  strokeWeight(1);
+  fill(#888888);
+  for (int j = 0; j < 5; j++) {
+    text(String.format("%.1f", maxVal * (5 - j) / 5), PADDING + 10, PADDING + (HEIGHT - 2 * PADDING) * j / 5);
   }
 }
 
@@ -406,17 +451,25 @@ void drawScatterplot() {
     int yPos = int(map(point.y, 0, ySliderBarVal, y1, y2));  
     noStroke();
     fill(#99FF33); 
-    ellipse(xPos, yPos, 10, 10);
-      
+    ellipse(xPos, yPos, 8, 8);
+  }
+
+  for (PVector point : selectedPoints) {
+    // draw the x-axis
+    int x1 = PADDING;
+    int x2 = width - PADDING;
+    int xPos = int(map(point.x, 0, xSliderBarVal, x1, x2));
+    int y1 = HEIGHT - PADDING;
+    int y2 = PADDING;
+    int yPos = int(map(point.y, 0, ySliderBarVal, y1, y2));  
     // add the tooltip for hover over effect
-    if (sq(mouseX - xPos) + sq(mouseY - yPos) < 200) {
+    if (sq(mouseX - xPos) + sq(mouseY - yPos) < 80) {
       fill(#009999); 
-      ellipse(xPos, yPos, 20, 20);
+      ellipse(xPos, yPos, 10, 10);
       fill(#222222);
       text(point.x + ", " + point.y, mouseX + 15, mouseY);
     }
   }
-
     
 }
 
@@ -512,7 +565,15 @@ void drawSplom() {
        if (i == numCols - 1) {
          for (int k = 0; k < numSecs; k++) {
            float label = map(area[0] + k * yGridGap, area[0], area[2], minX, maxX);
-           text(String.format("%.1f",label), area[0] + k * yGridGap - 6, area[3] + 15);
+           String showLabel = "";
+           if (label > 1000) {
+             showLabel = String.format("%.1f", label/1000) + "k";
+           } else if (label > 100){
+             showLabel = String.format("%.0f", label);
+           } else {
+             showLabel = String.format("%.1f", label);
+           }
+           text(showLabel, area[0] + k * yGridGap - 6, area[3] + 15);
          }
        }
        
@@ -520,7 +581,15 @@ void drawSplom() {
        if (j == numCols - 1) {
          for (int k = 0; k < numSecs; k++) {
            float label = map(area[1] + k * xGridGap, area[1], area[3], minY, maxY);
-           text(String.format("%.1f",label), area[0] - 25, area[1] + (numSecs - 1 - k) * xGridGap + 6);
+           String showLabel = "";
+           if (label > 1000) {
+             showLabel = String.format("%.1f", label/1000) + "k";
+           } else if (label > 100){
+             showLabel = String.format("%.0f", label);
+           } else {
+             showLabel = String.format("%.1f", label);
+           }
+           text(showLabel, area[0] - 35, area[1] + (numSecs - 1 - k) * xGridGap + 6);
          }
        }
     } // end of for loop j

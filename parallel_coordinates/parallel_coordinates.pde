@@ -78,7 +78,7 @@ void draw() {
  * Draw the parallel coordinates in the area defined in variable int[] canvas
  */
 void drawParaCoords() {
-  // clear the index for coloring
+  // clear the index (which lines to draw) for coloring
   if (!hasBrush) {
     selectedIndex.clear();
   }
@@ -99,7 +99,7 @@ void drawParaCoords() {
     int y2 = canvas[3];
     line(x1, y1, x2, y2);
     
-    // draw the labels on the axis
+    // store the min and max values
     float minVal = minArr(values[i]);
     mins[i] = minVal;
     float maxVal = maxArr(values[i]);
@@ -117,6 +117,15 @@ void drawParaCoords() {
     int r = int(map(lastY, canvas[3], canvas[1], color1[0], color2[0]));
     int g = int(map(lastY, canvas[3], canvas[1], color1[1], color2[1]));
     int b = int(map(lastY, canvas[3], canvas[1], color1[2], color2[2]));
+    // for the first axis check if user need to enable brush
+    if (hasBrush && curBarIndex == 0) {
+      if (pointInRect(brushPos, lastX, lastY)) {
+        selectedIndex.add(k);
+      } else {
+        selectedIndex.remove(k);
+      }
+    }
+      
     for (int i = 1; i < fields.length; i++) {
       float val = row.getFloat(fields[i]);
       int curX = lastX + axesGap;
